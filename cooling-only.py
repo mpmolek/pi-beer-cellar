@@ -6,19 +6,23 @@ from adafruit_htu21d import HTU21D
 from datetime import datetime
 from py_irsend import irsend
 
-#SET_TEMP = 20 # 68 *F
-SET_TEMP = 19
+SET_TEMP = 67
 
 # current temp must deviate by this much before AC will engage
-THRESHOLD = 1.25 #2.25 *F
+THRESHOLD = 1 
+
+OVERCOOL = 1
 
 # wait at least this long between AC triggers
 COMPRESSOR_DELAY_SECONDS = 30 * 60 # 30 minutes
 
+MIN_RUN_TIME_SECONDS = 8 *60 #8 minutes
+
 sensor = HTU21D(busio.I2C(board.SCL, board.SDA))
 
 def read_temperature():
-    return sensor.temperature
+    # Convert C to F
+    return (sensor.temperature * 1.8) + 32
 
 def read_humidity():
     return sensor.humidity
@@ -47,14 +51,17 @@ def main():
         current_temp = read_temperature()
         print(now_str() + ": current temp is " + str(current_temp))
         print(now_str() + ": currently cooling " + str(currently_cooling))
-        if not currently_cooling:
+        if not currently_cooling and current_temp > SET_TEMP + THRESHOLD:
             if now() >= last_cool_time_secs + COMPRESSOR_DELAY_SECONDS:
                 #and we haven't run for at least COMPRESSOR_DELAY_SECONDS
                 #start cooling
                 print(now_str() + ": turning on ac")
+                idle_time = (now() - last_cool_time_secs) / 60
+                print("it was off for " + str(idle_time) + " minutes")
                 send_power_command()
                 last_cool_time_secs = now()
                 currently_cooling = True
+                time.sleep(MIN_RUN_TIME_SECONDS)
             else:
                 sleep_until = last_cool_time_secs + COMPRESSOR_DELAY_SECONDS
                 sleep_duration = int(round(sleep_until - now()))
@@ -62,12 +69,15 @@ def main():
                 time.sleep(sleep_duration)
                 continue
         else:
-            if current_temp < SET_TEMP - THRESHOLD:
+            if currently_cooling and current_temp < SET_TEMP - THRESHOLD - OVERCOOL:
                 print(now_str() + ": too cold. turning off ac.")
-                send_power_commend()
+                send_power_command()
+                run_time = (now() - last_cool_time_secs) / 60
+                print("ac ran for " + str(run_time) + " minutes")
                 last_cool_time_secs = now() # wait at least half an hour from now before running again
                 currently_cooling = False
         print(now_str() + ": sleeping a minute before next loop")
+        print()
         time.sleep(60)
 
 if __name__ == "__main__":
