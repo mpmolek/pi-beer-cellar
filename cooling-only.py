@@ -37,10 +37,10 @@ def main():
 
     while True:
         current_temp = read_tempearture()
-        #if it's too hot
-        if current_temp > SET_TEMP + THRESHOLD:
-            #and we haven't run for at least COMPRESSOR_DELAY_SECONDS
+        if current_temp > SET_TEMP + THRESHOLD and not currently_cooling:
+            #if it's too hot
             if now() >= last_cool_time_secs + COMPRESSOR_DELAY_SECONDS:
+                #and we haven't run for at least COMPRESSOR_DELAY_SECONDS
                 #start cooling
                 send_power_command()
                 last_cool_time_secs = now()
@@ -49,6 +49,8 @@ def main():
                 sleep_until = last_cool_time_secs + COMPRESSOR_DELAY_SECONDS
                 sleep_duration = int(round(sleep_until - now())
                 sleep(sleep_duration)
+        elif current_temp < SET_TEMP - THRESHOLD:
+
 
 
 
