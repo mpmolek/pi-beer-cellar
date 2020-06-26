@@ -12,3 +12,4 @@ def read_temperature():
 
 
 print(read_temperature())
+print(sensor.relative_humidity)
